@@ -1,0 +1,160 @@
+2.1 	Product Perspective
+ClassBeyond is a new, self-contained web platform. It can integrate with third-party APIs for authentication (Firebase/Auth0) and calendar scheduling.
+
+2.2 	Product Functions
+User registration and login (students, teachers, mentors, admins)
+Browse, download, and view lessons offline via browser cache or PWA
+Take quizzes and earn badges
+Request and schedule mentorship sessions
+Teacher content upload and progress monitoring
+Admin approval of content
+Notifications for updates and mentorship requests
+2.3 	User Classes and Characteristics
+User Class
+Characteristics
+Frequency / Privileges
+Student
+Basic literacy, low technical expertise
+Daily; access lessons, take quizzes, request mentorship
+Teacher
+Medium technical expertise, uploads content, monitors progress
+Weekly; manage lessons and student dashboards
+Mentor
+Moderate technical expertise, guides students
+Weekly; respond to mentorship requests
+Admin
+High technical expertise, manages system
+As needed; approve content, manage users
+NGO/Partner
+Stakeholders monitoring impact
+Monthly; view reports
+
+
+2.4 	Operating Environment
+Chrome, Edge, Firefox, Safari (desktop and mobile)
+Flask or Node.js AP
+PostgreSQL or Firebase
+Service Workers / IndexedDB for Progressive Web App (PWA) offline caching
+Offline access supported; periodic sync required
+2.5 	Design and Implementation Constraints
+Low bandwidth and intermittent internet
+Devices with limited RAM/storage
+PWA standards for offline-first access
+Multilingual support
+Compliance with child protection and data privacy regulations
+Use of standard web frameworks (React.js, HTML5, CSS3, JS)
+2.6 	User Documentation
+User manuals and guides for students, teachers, and mentors
+Online help and tutorials accessible from website
+Admin dashboard documentation
+
+2.7 	Assumptions and Dependencies
+Users have devices with modern web browsers
+Firebase/Auth0 available for authentication
+Teachers/mentors can provide content in supported formats
+Internet available periodically for syncing offline content
+
+3. 	External Interface Requirements
+3.1 	User Interfaces
+Responsive web design for desktop and mobile
+Standardized buttons, menus, and navigation
+Error messages and tooltips
+Teacher/admin dashboards
+3.2 	Hardware Interfaces
+Devices: Desktop, laptop, tablets, mobile phones
+Optional microphone/webcam for mentorship
+Local browser storage for offline caching
+
+3.3 	Software Interfaces
+REST APIs for backend communication
+Firebase/Auth0 for authentication
+Google Calendar API for scheduling sessions
+PostgreSQL or Firebase database
+3.4 	Communications Interfaces
+Email and push notifications via browser
+Offline data sync via JSON over HTTPS
+SSL/TLS encryption for all communication                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+4. 	Requirement Specification 
+Stakeholder Requirements Specification
+Functional Requirements
+
+Req ID
+Requirements
+Description 
+FR 01
+User Regis
+Allow students, teachers, mentors, and admins to register and log in securely
+FR 02
+Browse & Download Lessons
+Enable users to browse lessons and download them offline using PWA caching
+FR 03
+Quizzes & Badges
+Allow students to take quizzes and earn badges for achievements
+FR 04
+Allow students to take quizzes and earn badges for achievements
+Students can request and schedule mentorship with mentors
+FR 05
+Teacher Content Upload
+Teacher can upload quizzes and lessons for review
+FR 06
+Admin Content Approval
+Admin must review and approve uploaded content before publishing
+FR 07
+Progress Tracking
+System tracks student progress and generate student report
+FR 08
+Notifications
+Notify users about updates, new lessons, and mentorship requests
+FR 09
+Offline Sync
+Sync offline data automatically once internet is restored
+
+
+5. 	Other Nonfunctional Requirements
+Example of Non-Functional Requirements 
+
+
+Requirement Type
+Req ID
+Description 
+Security
+NFR 01
+Authenticate all users using Firebase/Auth0
+Performance 
+NFR 02
+Support at least 100 concurrent web users
+Usability 
+NFR 03
+Provide an accessible interface suitable for low-literacy users
+Auditability 
+NFR 04
+All user actions logged for reporting
+Cross Browser Support 
+NFR 05
+Functional on
+Google Chrome
+Microsoft Edge
+Technology
+NFR 06
+Compatible with desktop and mobile browsers
+Availability
+NFR 07
+Offline-first access enabled through PWA caching
+Scalability
+NFR 08
+System should scale to 1000 additional users with minimal upgrades
+Auditability
+NFR 09
+All user actions logged for reporting
+
+
+
+6. 	Appendix
+MVP (Minimum Viable Product) – The initial functional version of the platform with core features such as offline lessons, quizzes, and mentorship.
+SDLC (Software Development Life Cycle) – The process framework guiding the development of ClassBeyond using Agile methodology.
+PWA (Progressive Web App) – A web application designed to work offline, installable on devices, and optimized for low-connectivity environments.
+Firebase – A backend-as-a-service platform providing authentication, database, hosting, and cloud services for ClassBeyond.
+Mentorship Session – A scheduled digital interaction between students and mentors for academic support.
+Gamification – The use of badges, points, and progress indicators to motivate student learning.
+Offline-first – A design approach ensuring ClassBeyond functions without internet connectivity and syncs data once reconnected.
+
