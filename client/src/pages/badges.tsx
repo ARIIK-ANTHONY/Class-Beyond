@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { StudentBottomNav } from "@/components/student-bottom-nav";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { NotificationBell } from "@/components/notification-bell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Badges() {
@@ -43,22 +45,31 @@ export default function Badges() {
     },
   };
 
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-8">
-      <OfflineIndicator />
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar role="student" />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <OfflineIndicator />
+          
+          <header className="flex items-center justify-between p-4 border-b border-border bg-background">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Your Badges</h1>
+                <p className="text-sm text-muted-foreground">Achievements you've earned on your learning journey</p>
+              </div>
+            </div>
+            <NotificationBell />
+          </header>
 
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground py-6 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-icons text-4xl">emoji_events</span>
-            <h1 className="text-2xl md:text-3xl font-bold">Your Badges</h1>
-          </div>
-          <p className="text-primary-foreground/90">Achievements you've earned on your learning journey</p>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
+          <main className="flex-1 overflow-auto p-6 bg-background">
+            <div className="max-w-7xl mx-auto">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <Card>
@@ -139,9 +150,10 @@ export default function Badges() {
             })}
           </div>
         )}
+            </div>
+          </main>
+        </div>
       </div>
-
-      <StudentBottomNav />
-    </div>
+    </SidebarProvider>
   );
 }

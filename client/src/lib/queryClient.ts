@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { auth } from "./firebase";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,14 +8,40 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+async function getAuthToken(): Promise<string | null> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    console.error('❌ getAuthToken - No current user in Firebase auth');
+    return null;
+  }
+  try {
+    // Force refresh to get a fresh token
+    const token = await currentUser.getIdToken(true);
+    console.log('✅ getAuthToken - Got fresh token, length:', token.length);
+    return token;
+  } catch (error) {
+    console.error('❌ getAuthToken - Error getting token:', error);
+    return null;
+  }
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const token = await getAuthToken();
+  console.log('Making request to:', url, 'Token present:', !!token);
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    console.warn('No Firebase token available for request to:', url);
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +56,15 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

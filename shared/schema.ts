@@ -13,7 +13,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table (required for Replit Auth)
+// Session storage table
 export const sessions = pgTable(
   "sessions",
   {
@@ -29,12 +29,10 @@ export const userRoleEnum = pgEnum("user_role", [
   "student",
   "teacher",
   "mentor",
-  "parent",
   "admin",
-  "ngo_partner",
 ]);
 
-// User storage table (required for Replit Auth, extended for ClassBeyond)
+// User storage table (extended for ClassBeyond)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -42,6 +40,8 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").notNull().default("student"),
+  googleCalendarToken: text("google_calendar_token"), // Encrypted access token
+  googleCalendarRefreshToken: text("google_calendar_refresh_token"), // Encrypted refresh token
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -71,6 +71,7 @@ export const lessons = pgTable("lessons", {
   content: text("content").notNull(), // Rich text content
   level: varchar("level", { length: 50 }).notNull(), // e.g., "beginner", "intermediate", "advanced"
   teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  externalContent: jsonb("external_content"), // Array of external videos, books, courses
   isApproved: boolean("is_approved").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -170,7 +171,9 @@ export type StudentBadge = typeof studentBadges.$inferSelect;
 // Mentorship session status enum
 export const sessionStatusEnum = pgEnum("session_status", [
   "requested",
+  "pending",
   "approved",
+  "scheduled",
   "completed",
   "cancelled",
 ]);
@@ -184,6 +187,9 @@ export const mentorshipSessions = pgTable("mentorship_sessions", {
   requestMessage: text("request_message"),
   scheduledAt: timestamp("scheduled_at"),
   status: sessionStatusEnum("status").notNull().default("requested"),
+  googleCalendarEventId: varchar("google_calendar_event_id"), // Store calendar event ID
+  meetingLink: text("meeting_link"), // Google Meet or Zoom link
+  duration: integer("duration").default(60), // Session duration in minutes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -196,6 +202,51 @@ export const insertMentorshipSessionSchema = createInsertSchema(mentorshipSessio
 
 export type InsertMentorshipSession = z.infer<typeof insertMentorshipSessionSchema>;
 export type MentorshipSession = typeof mentorshipSessions.$inferSelect;
+
+// Mentor profiles (extended profile information for mentors)
+export const mentorProfiles = pgTable("mentor_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mentorId: varchar("mentor_id").notNull().unique().references(() => users.id),
+  bio: text("bio"), // Mentor's bio/introduction
+  expertise: jsonb("expertise"), // Array of subjects/topics they specialize in
+  experience: text("experience"), // Years/description of experience
+  education: text("education"), // Educational background
+  availability: jsonb("availability"), // Available time slots { day: string, slots: [{start, end}] }
+  hourlyRate: integer("hourly_rate"), // Optional: if mentoring is paid
+  totalSessions: integer("total_sessions").default(0),
+  averageRating: integer("average_rating").default(0), // Stored as integer (e.g., 450 = 4.5 stars)
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMentorProfileSchema = createInsertSchema(mentorProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMentorProfile = z.infer<typeof insertMentorProfileSchema>;
+export type MentorProfile = typeof mentorProfiles.$inferSelect;
+
+// Mentor reviews/ratings
+export const mentorReviews = pgTable("mentor_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mentorId: varchar("mentor_id").notNull().references(() => users.id),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  sessionId: varchar("session_id").references(() => mentorshipSessions.id),
+  rating: integer("rating").notNull(), // 1-5 stars
+  review: text("review"), // Optional written review
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMentorReviewSchema = createInsertSchema(mentorReviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMentorReview = z.infer<typeof insertMentorReviewSchema>;
+export type MentorReview = typeof mentorReviews.$inferSelect;
 
 // Q&A Forum for peer learning
 export const forumQuestions = pgTable("forum_questions", {
@@ -249,9 +300,11 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export const notificationTypeEnum = pgEnum("notification_type", [
   "mentorship_request",
   "mentorship_approved",
+  "mentorship_scheduled",
   "badge_earned",
   "lesson_available",
   "quiz_reminder",
+  "forum_answer",
 ]);
 
 export const userNotifications = pgTable("user_notifications", {

@@ -3,7 +3,7 @@ import { Pool } from "@neondatabase/serverless";
 import { eq, and, desc, sql, asc } from "drizzle-orm";
 import {
   type User,
-  type InsertUser,
+  type UpsertUser,
   type Lesson,
   type InsertLesson,
   type Quiz,
@@ -19,6 +19,14 @@ import {
   type Notification,
   type InsertNotification,
   type AuditLog,
+  type MentorProfile,
+  type InsertMentorProfile,
+  type MentorReview,
+  type InsertMentorReview,
+  type ForumQuestion,
+  type InsertForumQuestion,
+  type ForumAnswer,
+  type InsertForumAnswer,
   users,
   lessons,
   quizzes,
@@ -28,6 +36,10 @@ import {
   studentBadges,
   userNotifications,
   auditLogs,
+  mentorProfiles,
+  mentorReviews,
+  forumQuestions,
+  forumAnswers,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -35,7 +47,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   getUsersByRole(role: User["role"]): Promise<User[]>;
 
@@ -65,6 +77,17 @@ export interface IStorage {
   updateMentorshipSession(id: string, updates: Partial<MentorshipSession>): Promise<MentorshipSession | undefined>;
   getPendingMentorshipRequests(): Promise<MentorshipSession[]>;
 
+  // Mentor profile operations
+  createMentorProfile(profile: InsertMentorProfile): Promise<MentorProfile>;
+  getMentorProfile(mentorId: string): Promise<MentorProfile | undefined>;
+  updateMentorProfile(mentorId: string, updates: Partial<MentorProfile>): Promise<MentorProfile | undefined>;
+  getAllMentorProfiles(): Promise<MentorProfile[]>;
+
+  // Mentor review operations
+  createMentorReview(review: InsertMentorReview): Promise<MentorReview>;
+  getReviewsByMentor(mentorId: string): Promise<MentorReview[]>;
+  getReviewsByStudent(studentId: string): Promise<MentorReview[]>;
+
   // Progress operations
   getUserProgress(userId: string, lessonId: string): Promise<StudentProgress | undefined>;
   createOrUpdateProgress(progress: InsertStudentProgress): Promise<StudentProgress>;
@@ -86,6 +109,8 @@ export interface IStorage {
 
 export class PostgresStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
+  public forumQuestions = forumQuestions;
+  public forumAnswers = forumAnswers;
 
   constructor(connectionString: string) {
     const pool = new Pool({ connectionString });
@@ -99,8 +124,8 @@ export class PostgresStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
-    return result[0];
+    // Username field doesn't exist in current schema - using email instead
+    return await this.getUserByEmail(username);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -108,7 +133,12 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async getUserById(id: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createUser(insertUser: UpsertUser): Promise<User> {
     const result = await this.db.insert(users).values(insertUser).returning();
     return result[0];
   }
@@ -124,19 +154,12 @@ export class PostgresStorage implements IStorage {
 
   // Lesson operations
   async getAllLessons(filters?: { gradeLevel?: number; subject?: string }): Promise<Lesson[]> {
-    let query = this.db.select().from(lessons);
-    
-    if (filters?.gradeLevel) {
-      query = query.where(eq(lessons.gradeLevel, filters.gradeLevel)) as any;
-    }
+    let query = this.db.select().from(lessons).where(eq(lessons.isApproved, true));
+    // Note: gradeLevel field doesn't exist in current schema, only filtering by subject
     if (filters?.subject) {
-      const condition = filters.gradeLevel 
-        ? and(eq(lessons.gradeLevel, filters.gradeLevel), eq(lessons.subject, filters.subject))
-        : eq(lessons.subject, filters.subject);
-      query = this.db.select().from(lessons).where(condition!) as any;
+      query = this.db.select().from(lessons).where(and(eq(lessons.isApproved, true), eq(lessons.subject, filters.subject as any))) as any;
     }
-
-    return await query.orderBy(asc(lessons.sequence));
+    return await query.orderBy(desc(lessons.createdAt));
   }
 
   async getLesson(id: string): Promise<Lesson | undefined> {
@@ -155,6 +178,10 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteLesson(id: string): Promise<boolean> {
+    // First, delete any quizzes associated with this lesson
+    await this.db.delete(quizzes).where(eq(quizzes.lessonId, id));
+    
+    // Then delete the lesson itself
     const result = await this.db.delete(lessons).where(eq(lessons.id, id)).returning();
     return result.length > 0;
   }
@@ -335,7 +362,72 @@ export class PostgresStorage implements IStorage {
       query = this.db.select().from(auditLogs).where(condition!) as any;
     }
 
-    return await query.orderBy(desc(auditLogs.timestamp));
+    return await query.orderBy(desc(auditLogs.createdAt));
+  }
+
+  // Mentor profile operations
+  async createMentorProfile(profile: InsertMentorProfile): Promise<MentorProfile> {
+    const result = await this.db.insert(mentorProfiles).values(profile).returning();
+    return result[0];
+  }
+
+  async getMentorProfile(mentorId: string): Promise<MentorProfile | undefined> {
+    const result = await this.db
+      .select()
+      .from(mentorProfiles)
+      .where(eq(mentorProfiles.mentorId, mentorId))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateMentorProfile(mentorId: string, updates: Partial<MentorProfile>): Promise<MentorProfile | undefined> {
+    const result = await this.db
+      .update(mentorProfiles)
+      .set(updates)
+      .where(eq(mentorProfiles.mentorId, mentorId))
+      .returning();
+    return result[0];
+  }
+
+  async getAllMentorProfiles(): Promise<MentorProfile[]> {
+    return await this.db
+      .select()
+      .from(mentorProfiles)
+      .where(eq(mentorProfiles.isActive, true))
+      .orderBy(desc(mentorProfiles.averageRating));
+  }
+
+  // Mentor review operations
+  async createMentorReview(review: InsertMentorReview): Promise<MentorReview> {
+    const result = await this.db.insert(mentorReviews).values(review).returning();
+    
+    // Update mentor's average rating
+    const reviews = await this.getReviewsByMentor(review.mentorId);
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = Math.round((totalRating / reviews.length) * 100); // Store as integer (e.g., 450 = 4.5)
+    
+    await this.db
+      .update(mentorProfiles)
+      .set({ averageRating: avgRating })
+      .where(eq(mentorProfiles.mentorId, review.mentorId));
+    
+    return result[0];
+  }
+
+  async getReviewsByMentor(mentorId: string): Promise<MentorReview[]> {
+    return await this.db
+      .select()
+      .from(mentorReviews)
+      .where(eq(mentorReviews.mentorId, mentorId))
+      .orderBy(desc(mentorReviews.createdAt));
+  }
+
+  async getReviewsByStudent(studentId: string): Promise<MentorReview[]> {
+    return await this.db
+      .select()
+      .from(mentorReviews)
+      .where(eq(mentorReviews.studentId, studentId))
+      .orderBy(desc(mentorReviews.createdAt));
   }
 }
 

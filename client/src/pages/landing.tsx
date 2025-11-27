@@ -1,10 +1,101 @@
+import { Link } from "wouter";
+import React, { useState } from "react";
+// Responsive Navbar component
+function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <nav className="w-full bg-white/90 backdrop-blur-md shadow-md fixed top-0 left-0 z-20">
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="material-icons text-primary text-3xl">school</span>
+          <span className="font-bold text-xl text-primary">ClassBeyond</span>
+        </div>
+        <div className="hidden md:flex gap-6">
+          <NavLink href="/" label="Home" />
+          <NavLink href="/lessons" label="Lessons" />
+          {/* <NavLink href="/quiz" label="Quizzes" /> */}
+          {/* <NavLink href="/student-mentors" label="Mentors" /> */}
+          <NavLink href="/about" label="About" />
+        </div>
+        <button className="md:hidden p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary" onClick={() => setMenuOpen(!menuOpen)}>
+          <span className="material-icons text-primary text-3xl">menu</span>
+        </button>
+      </div>
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="md:hidden bg-white/95 shadow-lg px-4 py-2 flex flex-col gap-3">
+          <NavLink href="/" label="Home" onClick={() => setMenuOpen(false)} />
+          <NavLink href="/lessons" label="Lessons" onClick={() => setMenuOpen(false)} />
+          {/* <NavLink href="/quiz" label="Quizzes" onClick={() => setMenuOpen(false)} /> */}
+          {/* <NavLink href="/student-mentors" label="Mentors" onClick={() => setMenuOpen(false)} /> */}
+          <NavLink href="/about" label="About" onClick={() => setMenuOpen(false)} />
+        </div>
+      )}
+    </nav>
+  );
+}
+
+
+interface NavLinkProps {
+  href: string;
+  label: string;
+  onClick?: () => void;
+}
+function NavLink({ href, label, onClick }: NavLinkProps) {
+  const location = window.location.pathname;
+  const isActive = location === href;
+  return (
+    <Link
+      href={href}
+      onClick={onClick ? onClick : undefined}
+      className={`px-3 py-2 rounded transition font-medium text-base ${isActive ? "bg-primary text-white shadow" : "text-gray-700 hover:bg-primary/10 hover:text-primary"}`}
+    >
+      {label}
+    </Link>
+  );
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import heroImage from "@assets/generated_images/Hopeful_children_learning_together_063e8999.png";
+import { Badge } from "@/components/ui/badge";
+import { AuthModal } from "@/components/AuthModal";
+import heroImage from "@assets/image/Hopeful_children_learning_together_063e8999.png";
 
 export default function Landing() {
+    // Import lessons for preview
+    const [lessons, setLessons] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    React.useEffect(() => {
+      fetch('/api/public-lessons')
+        .then(res => res.json())
+        .then(data => {
+          console.log('Fetched lessons:', data);
+          setLessons(data);
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error('Error fetching lessons:', err);
+          setIsLoading(false);
+        });
+    }, []);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const handleGetStarted = () => {
+    setAuthModalOpen(true);
+  };
+
+  // Defensive: Only use lessons if it's an array and not too large
+  let safeLessons: any[] = Array.isArray(lessons) ? lessons.slice(0, 12) : [];
+  const [previewLesson, setPreviewLesson] = useState<any>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const handlePreview = (lesson: any) => {
+    setPreviewLesson(lesson);
+    setPreviewOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <Navbar />
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Hero Image with dark wash */}
@@ -34,115 +125,92 @@ export default function Landing() {
             size="lg"
             variant="default"
             className="text-lg px-8 py-6"
-            onClick={() => (window.location.href = "/api/login")}
-            data-testid="button-login"
+            onClick={handleGetStarted}
           >
             Get Started
           </Button>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 px-4 bg-background">
+      {/* Lessons Preview Section */}
+      <section className="py-16 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-foreground">
-            Education for Everyone, Everywhere
-          </h2>
-          <p className="text-lg text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
-            Designed for low-resource settings with offline capabilities and accessible content
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-icons text-primary text-3xl">cloud_download</span>
-                  <CardTitle>Offline Learning</CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  Download lessons and learn without internet. Perfect for areas with limited
-                  connectivity.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-icons text-primary text-3xl">calculate</span>
-                  <CardTitle>Quality Curriculum</CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  Curriculum-aligned lessons in Math, English, and Science reviewed by experienced
-                  educators.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-icons text-primary text-3xl">quiz</span>
-                  <CardTitle>Interactive Quizzes</CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  Test your knowledge with engaging quizzes and get immediate feedback on your
-                  progress.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-icons text-primary text-3xl">emoji_events</span>
-                  <CardTitle>Earn Badges</CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  Stay motivated with achievement badges and track your learning journey.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-icons text-primary text-3xl">people</span>
-                  <CardTitle>Expert Mentorship</CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  Connect with mentors who can guide your learning and answer your questions.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-icons text-primary text-3xl">family_restroom</span>
-                  <CardTitle>Parent Monitoring</CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  Parents can track their children's progress and stay engaged in their education.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
+          <h2 className="text-3xl font-bold mb-8 text-primary text-center">Explore Lessons</h2>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card><CardContent className="h-32" /></Card>
+              <Card><CardContent className="h-32" /></Card>
+              <Card><CardContent className="h-32" /></Card>
+            </div>
+          ) : safeLessons.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {safeLessons.map((lesson) => (
+                <Card key={lesson.id} className="hover-elevate flex flex-col">
+                  <CardHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="capitalize">{lesson.subject}</Badge>
+                      <Badge variant="outline" className="ml-2 capitalize">{lesson.level}</Badge>
+                    </div>
+                    <CardTitle className="text-lg">{lesson.title}</CardTitle>
+                    <CardDescription className="line-clamp-3">{lesson.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="mt-auto flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-1/2"
+                      onClick={() => handlePreview(lesson)}
+                    >
+                      Preview
+                    </Button>
+                    <Button
+                      className="w-1/2"
+                      onClick={() => setAuthModalOpen(true)}
+                    >
+                      Enroll & Start Learning
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card><CardContent className="py-16 text-center">No lessons found</CardContent></Card>
+          )}
         </div>
       </section>
 
+      {/* Lesson Preview Modal */}
+      {previewOpen && previewLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-8 relative">
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-primary text-2xl"
+              onClick={() => setPreviewOpen(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-2">{previewLesson.title}</h2>
+            <p className="text-muted-foreground mb-4">{previewLesson.description}</p>
+            <div className="prose prose-sm max-w-none bg-muted/50 p-4 rounded-lg mb-4">
+              {previewLesson.content
+                ? previewLesson.content.slice(0, 300) + (previewLesson.content.length > 300 ? "..." : "")
+                : "No preview available."}
+            </div>
+            <Button className="w-full" onClick={() => { setPreviewOpen(false); setAuthModalOpen(true); }}>
+              Enroll to view full content
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Mission Section */}
       <section className="py-16 px-4 bg-muted">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground">Our Mission</h2>
           <p className="text-lg leading-relaxed text-muted-foreground mb-6">
-            We believe education is the most powerful tool to break cycles of poverty and create
-            opportunities for children in refugee camps and underserved communities across South
-            Sudan and East Africa.
+            We believe education is the most powerful tool to break cycles of poverty and create opportunities for children in refugee camps and underserved communities across South Sudan and East Africa.
           </p>
           <p className="text-lg leading-relaxed text-muted-foreground">
-            ClassBeyond provides free, accessible, and offline-capable educational resources to
-            ensure every child can learn, regardless of their circumstances.
+            ClassBeyond provides free, accessible, and offline-capable educational resources to ensure every child can learn, regardless of their circumstances.
           </p>
         </div>
       </section>
@@ -158,7 +226,7 @@ export default function Landing() {
             size="lg"
             variant="outline"
             className="text-lg px-8 py-6 bg-white/10 backdrop-blur-sm text-white border-white/30 hover:bg-white/20"
-            onClick={() => (window.location.href = "/api/login")}
+            onClick={() => setAuthModalOpen(true)}
             data-testid="button-cta-login"
           >
             Join ClassBeyond

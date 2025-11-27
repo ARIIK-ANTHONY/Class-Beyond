@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default function TeacherHome() {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -37,12 +38,15 @@ export default function TeacherHome() {
                 <p className="text-sm text-muted-foreground">Manage your lessons and students</p>
               </div>
             </div>
-            <Link href="/teacher/lessons/new">
-              <Button data-testid="button-create-lesson">
-                <span className="material-icons mr-2 text-lg">add</span>
-                Create Lesson
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <Link href="/teacher/lessons/new">
+                <Button data-testid="button-create-lesson">
+                  <span className="material-icons mr-2 text-lg">add</span>
+                  Create Lesson
+                </Button>
+              </Link>
+            </div>
           </header>
 
           <main className="flex-1 overflow-auto p-6 bg-background">

@@ -1,13 +1,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StudentBottomNav } from "@/components/student-bottom-nav";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { NotificationBell } from "@/components/notification-bell";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Profile() {
   const { user } = useAuth();
+  
   const { data: stats } = useQuery({
     queryKey: ["/api/student/stats"],
   });
@@ -17,22 +20,31 @@ export default function Profile() {
     return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
   };
 
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-8">
-      <OfflineIndicator />
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar role="student" />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <OfflineIndicator />
+          
+          <header className="flex items-center justify-between p-4 border-b border-border bg-background">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+                <p className="text-sm text-muted-foreground">Manage your account and view your progress</p>
+              </div>
+            </div>
+            <NotificationBell />
+          </header>
 
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground py-6 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-icons text-4xl">account_circle</span>
-            <h1 className="text-2xl md:text-3xl font-bold">Profile</h1>
-          </div>
-          <p className="text-primary-foreground/90">Manage your account and view your progress</p>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
+          <main className="flex-1 overflow-auto p-6 bg-background">
+            <div className="max-w-4xl mx-auto">
         {/* Profile Card */}
         <Card className="mb-6">
           <CardContent className="py-8">
@@ -54,6 +66,7 @@ export default function Profile() {
                   {user?.role} • Member since {new Date(user?.createdAt || Date.now()).toLocaleDateString()}
                 </p>
               </div>
+              <Button variant="outline" onClick={() => {}}>Edit Profile</Button>
             </div>
           </CardContent>
         </Card>
@@ -105,9 +118,10 @@ export default function Profile() {
             </CardContent>
           </Card>
         </div>
+            </div>
+          </main>
+        </div>
       </div>
-
-      <StudentBottomNav />
-    </div>
+    </SidebarProvider>
   );
 }
