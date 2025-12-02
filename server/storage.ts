@@ -109,18 +109,64 @@ export interface IStorage {
 
 export class PostgresStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
+  private pool: Pool;
   public forumQuestions = forumQuestions;
   public forumAnswers = forumAnswers;
 
   constructor(connectionString: string) {
-    const pool = new Pool({ connectionString });
-    this.db = drizzle(pool);
+    this.pool = new Pool({ 
+      connectionString,
+      max: 10,
+      idleTimeoutMillis: 30000, // Increase idle timeout to 30 seconds
+      connectionTimeoutMillis: 10000, // Add connection timeout
+    });
+    
+    // Handle pool errors gracefully
+    this.pool.on('error', (err) => {
+      console.error('❌ Database pool error:', err.message);
+    });
+    
+    this.db = drizzle(this.pool);
+  }
+
+  // Helper method to execute queries with retry logic
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 2,
+    operationName: string = 'database operation'
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        const isConnectionError = error.message?.includes('Connection terminated') || 
+                                 error.message?.includes('connection') ||
+                                 error.code === 'PROTOCOL_CONNECTION_LOST';
+        
+        if (isConnectionError && attempt < maxRetries) {
+          console.warn(`⚠️ ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`, error.message);
+          // Wait before retrying with exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+          continue;
+        }
+        
+        console.error(`❌ ${operationName} failed:`, error.message);
+        throw error;
+      }
+    }
+    
+    throw lastError!;
   }
 
   // User operations
   async getUser(id: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    return this.executeWithRetry(async () => {
+      const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+      return result[0];
+    }, 2, 'getUser');
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -129,43 +175,57 @@ export class PostgresStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    return result[0];
+    return this.executeWithRetry(async () => {
+      const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+      return result[0];
+    }, 2, 'getUserByEmail');
   }
 
   async getUserById(id: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    return this.executeWithRetry(async () => {
+      const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+      return result[0];
+    }, 2, 'getUserById');
   }
 
   async createUser(insertUser: UpsertUser): Promise<User> {
-    const result = await this.db.insert(users).values(insertUser).returning();
-    return result[0];
+    return this.executeWithRetry(async () => {
+      const result = await this.db.insert(users).values(insertUser).returning();
+      return result[0];
+    }, 2, 'createUser');
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const result = await this.db.update(users).set(updates).where(eq(users.id, id)).returning();
-    return result[0];
+    return this.executeWithRetry(async () => {
+      const result = await this.db.update(users).set(updates).where(eq(users.id, id)).returning();
+      return result[0];
+    }, 2, 'updateUser');
   }
 
   async getUsersByRole(role: User["role"]): Promise<User[]> {
-    return await this.db.select().from(users).where(eq(users.role, role));
+    return this.executeWithRetry(async () => {
+      return await this.db.select().from(users).where(eq(users.role, role));
+    }, 2, 'getUsersByRole');
   }
 
   // Lesson operations
   async getAllLessons(filters?: { gradeLevel?: number; subject?: string }): Promise<Lesson[]> {
-    // Return ALL lessons, not just approved ones - let the caller filter by approval status
-    let query = this.db.select().from(lessons);
-    // Note: gradeLevel field doesn't exist in current schema, only filtering by subject
-    if (filters?.subject) {
-      query = this.db.select().from(lessons).where(eq(lessons.subject, filters.subject as any)) as any;
-    }
-    return await query.orderBy(desc(lessons.createdAt));
+    return this.executeWithRetry(async () => {
+      // Return ALL lessons, not just approved ones - let the caller filter by approval status
+      let query = this.db.select().from(lessons);
+      // Note: gradeLevel field doesn't exist in current schema, only filtering by subject
+      if (filters?.subject) {
+        query = this.db.select().from(lessons).where(eq(lessons.subject, filters.subject as any)) as any;
+      }
+      return await query.orderBy(desc(lessons.createdAt));
+    }, 2, 'getAllLessons');
   }
 
   async getLesson(id: string): Promise<Lesson | undefined> {
-    const result = await this.db.select().from(lessons).where(eq(lessons.id, id)).limit(1);
-    return result[0];
+    return this.executeWithRetry(async () => {
+      const result = await this.db.select().from(lessons).where(eq(lessons.id, id)).limit(1);
+      return result[0];
+    }, 2, 'getLesson');
   }
 
   async createLesson(lesson: InsertLesson): Promise<Lesson> {
