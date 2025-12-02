@@ -39,17 +39,19 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         await signIn(email, password);
         
         // Wait for Firebase auth state to update
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Check if user exists in database
-        // If not, it means they were deleted or it's a legacy Firebase user
-        // In this case, show error and ask them to sign up again
         toast({
           title: "Welcome back!",
           description: "You've successfully logged in.",
         });
         
         onOpenChange(false);
+        
+        // Reload to fetch user data and redirect to portal
+        setTimeout(() => {
+          window.location.replace(window.location.href);
+        }, 500);
       } else {
         // SIGNUP
         try {
