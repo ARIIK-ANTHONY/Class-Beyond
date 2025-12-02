@@ -313,7 +313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (gradeLevel) filters.gradeLevel = parseInt(gradeLevel as string);
       if (subject) filters.subject = subject as string;
-      const lessons = await storage.getAllLessons(filters);
+      const allLessons = await storage.getAllLessons(filters);
+      const lessons = allLessons.filter(l => l.isApproved === true);
       res.json(lessons);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch lessons" });
@@ -327,7 +328,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (gradeLevel) filters.gradeLevel = parseInt(gradeLevel as string);
       if (subject) filters.subject = subject as string;
-      const lessons = await storage.getAllLessons(filters);
+      const allLessons = await storage.getAllLessons(filters);
+      const lessons = allLessons.filter(l => l.isApproved === true);
       res.json(lessons);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch lessons" });
@@ -342,6 +344,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!lesson) {
         return res.status(404).json({ error: "Lesson not found" });
       }
+      
+      console.log(`📖 Serving lesson ${id}:`, {
+        title: lesson.title,
+        hasContent: !!lesson.content,
+        contentLength: lesson.content?.length || 0,
+        contentPreview: lesson.content?.substring(0, 100) || '(empty)'
+      });
       
       // Also fetch the quiz if it exists (quiz questions are already in the jsonb field)
       const quizzes = await storage.getQuizzesByLesson(id);
@@ -1126,7 +1135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const progress = await storage.getProgressByUser(user.id);
       const submissions = await storage.getQuizSubmissionsByStudent(user.id);
       const badges = await storage.getBadgesByUser(user.id);
-      const lessons = await storage.getAllLessons({});
+      const allLessons = await storage.getAllLessons({});
+      const lessons = allLessons.filter(l => l.isApproved === true);
       
       const completedLessons = progress.filter(p => p.completed).length;
       const avgScore = submissions.length > 0
@@ -1150,7 +1160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as any;
       const progress = await storage.getProgressByUser(user.id);
-      const lessons = await storage.getAllLessons({});
+      const allLessons = await storage.getAllLessons({});
+      const lessons = allLessons.filter(l => l.isApproved === true);
       
       // Get lessons with progress
       const lessonsWithProgress = lessons.slice(0, 4).map(lesson => {
@@ -1727,9 +1738,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/pending-approvals", verifyFirebaseToken, requireRole("admin"), async (req, res) => {
     try {
       const lessons = await storage.getAllLessons({});
+      console.log(`📚 Total lessons found: ${lessons.length}`);
+      console.log(`📋 Lessons approval status:`, lessons.map(l => ({ 
+        id: l.id, 
+        title: l.title, 
+        isApproved: l.isApproved,
+        isApprovedType: typeof l.isApproved,
+        truthyCheck: !l.isApproved,
+        strictCheck: l.isApproved === false
+      })));
+      
       const pendingLessons = lessons
-        .filter(l => !l.isApproved)
+        .filter(l => l.isApproved === false)
         .slice(0, 10);
+      
+      console.log(`⏳ Pending lessons (isApproved === false): ${pendingLessons.length}`);
       
       // Fetch teacher names for each lesson
       const lessonsWithTeachers = await Promise.all(

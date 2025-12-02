@@ -154,10 +154,11 @@ export class PostgresStorage implements IStorage {
 
   // Lesson operations
   async getAllLessons(filters?: { gradeLevel?: number; subject?: string }): Promise<Lesson[]> {
-    let query = this.db.select().from(lessons).where(eq(lessons.isApproved, true));
+    // Return ALL lessons, not just approved ones - let the caller filter by approval status
+    let query = this.db.select().from(lessons);
     // Note: gradeLevel field doesn't exist in current schema, only filtering by subject
     if (filters?.subject) {
-      query = this.db.select().from(lessons).where(and(eq(lessons.isApproved, true), eq(lessons.subject, filters.subject as any))) as any;
+      query = this.db.select().from(lessons).where(eq(lessons.subject, filters.subject as any)) as any;
     }
     return await query.orderBy(desc(lessons.createdAt));
   }

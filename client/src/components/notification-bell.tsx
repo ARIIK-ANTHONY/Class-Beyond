@@ -88,9 +88,17 @@ export function NotificationBell() {
     
     // Navigate based on notification message content and user role
     if (notification.message.includes('approved') || notification.message.includes('rejected')) {
-      // Lesson notification - close popover and navigate
+      // Lesson approval/rejection notification for teacher
       setOpen(false);
       setLocation('/teacher/lessons');
+    } else if (notification.message.includes('submitted') && notification.message.includes('lesson')) {
+      // New lesson submitted - admin should go to approval page
+      setOpen(false);
+      if (user?.role === 'admin') {
+        setLocation('/admin/approval');
+      } else {
+        setLocation('/teacher/lessons');
+      }
     } else if (notification.relatedId) {
       // Navigate based on notification type with relatedId
       setOpen(false);

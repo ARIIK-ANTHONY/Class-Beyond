@@ -228,48 +228,92 @@ export default function LessonViewer() {
               Additional Resources
             </h2>
             
-            {lesson.externalContent.map((content: any, index: number) => (
-              <Card key={index} className="overflow-hidden">
-                {content.type === 'video' && (
-                  <>
+            {lesson.externalContent.map((content: any, index: number) => {
+              const contentType = content.contentType || content.type;
+              
+              // For YouTube videos
+              if (contentType === 'video') {
+                const videoId = content.id?.videoId || content.videoId;
+                const videoUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : content.url;
+                
+                return (
+                  <Card key={index} className="overflow-hidden">
                     <CardHeader>
                       <div className="flex items-center gap-2">
                         <span className="material-icons text-red-500">play_circle</span>
-                        <CardTitle className="text-xl">{content.title}</CardTitle>
+                        <CardTitle className="text-xl">{content.snippet?.title || content.title}</CardTitle>
                       </div>
-                      {content.description && (
-                        <CardDescription>{content.description}</CardDescription>
+                      {(content.snippet?.description || content.description) && (
+                        <CardDescription className="line-clamp-2">
+                          {content.snippet?.description || content.description}
+                        </CardDescription>
                       )}
                     </CardHeader>
                     <CardContent>
                       <AspectRatio ratio={16 / 9}>
                         <iframe
-                          src={content.url.replace('watch?v=', 'embed/')}
-                          title={content.title}
+                          src={videoUrl}
+                          title={content.snippet?.title || content.title}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
-                          className="w-full h-full rounded-md"
+                          className="w-full h-full rounded-md border-0"
                         />
                       </AspectRatio>
                     </CardContent>
-                  </>
-                )}
+                  </Card>
+                );
+              }
+              
+              // For books
+              if (contentType === 'book') {
+                const bookUrl = content.key ? `https://openlibrary.org${content.key}` : content.url;
+                const authors = content.author_name?.join(', ') || content.author;
                 
-                {content.type === 'book' && (
-                  <>
+                return (
+                  <Card key={index} className="overflow-hidden">
                     <CardHeader>
                       <div className="flex items-center gap-2">
                         <span className="material-icons text-blue-500">menu_book</span>
                         <CardTitle className="text-xl">{content.title}</CardTitle>
                       </div>
-                      {content.author && (
-                        <CardDescription>by {content.author}</CardDescription>
+                      {authors && (
+                        <CardDescription>by {authors}</CardDescription>
                       )}
                     </CardHeader>
                     <CardContent>
-                      {content.description && (
-                        <p className="text-muted-foreground mb-4">{content.description}</p>
-                      )}
+                      <div className="space-y-4">
+                        {content.first_publish_year && (
+                          <p className="text-sm text-muted-foreground">
+                            First published: {content.first_publish_year}
+                          </p>
+                        )}
+                        <a 
+                          href={bookUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          <Button className="w-full">
+                            <span className="material-icons mr-2">open_in_new</span>
+                            View on Open Library
+                          </Button>
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              
+              // For courses or other content
+              return (
+                <Card key={index} className="overflow-hidden">
+                  <CardHeader>
+                    <CardTitle className="text-xl">{content.title}</CardTitle>
+                    {content.description && (
+                      <CardDescription>{content.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  {content.url && (
+                    <CardContent>
                       <a 
                         href={content.url} 
                         target="_blank" 
@@ -277,14 +321,14 @@ export default function LessonViewer() {
                       >
                         <Button className="w-full">
                           <span className="material-icons mr-2">open_in_new</span>
-                          Read on Open Library
+                          Open Resource
                         </Button>
                       </a>
                     </CardContent>
-                  </>
-                )}
-              </Card>
-            ))}
+                  )}
+                </Card>
+              );
+            })}
           </div>
         )}
 
