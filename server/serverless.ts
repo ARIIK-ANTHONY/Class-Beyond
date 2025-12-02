@@ -3,7 +3,6 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
 
 const app = express();
 
@@ -31,9 +30,6 @@ async function initializeApp() {
   initPromise = (async () => {
     try {
       await registerRoutes(app);
-      
-      // In production (Vercel), serve static files
-      serveStatic(app);
       
       // Error handler
       app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
