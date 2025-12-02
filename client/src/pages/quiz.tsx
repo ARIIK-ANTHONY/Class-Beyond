@@ -29,9 +29,18 @@ export default function Quiz() {
   const [badgesEarned, setBadgesEarned] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const { data: quiz, isLoading } = useQuery({
+  const { data: quiz, isLoading, error } = useQuery({
     queryKey: ["/api/quizzes", quizId],
     enabled: !!quizId,
+  });
+
+  // Debug logging
+  console.log("🎯 Quiz page:", {
+    quizId,
+    hasQuiz: !!quiz,
+    isLoading,
+    error,
+    quiz: quiz
   });
 
   const submitQuizMutation = useMutation({
