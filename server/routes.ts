@@ -328,10 +328,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (gradeLevel) filters.gradeLevel = parseInt(gradeLevel as string);
       if (subject) filters.subject = subject as string;
+      
+      console.log('📚 /api/lessons request:', { filters, user: req.user?.email });
+      
       const allLessons = await storage.getAllLessons(filters);
+      console.log('📚 Total lessons from DB:', allLessons.length);
+      
       const lessons = allLessons.filter(l => l.isApproved === true);
+      console.log('📚 Approved lessons:', lessons.length);
+      
       res.json(lessons);
     } catch (error) {
+      console.error('❌ Error fetching lessons:', error);
       res.status(500).json({ error: "Failed to fetch lessons" });
     }
   });

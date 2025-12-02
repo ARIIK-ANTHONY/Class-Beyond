@@ -37,6 +37,31 @@ export default function Lessons() {
 
   const { data: lessons, isLoading, error } = useQuery<Lesson[]>({
     queryKey: ["/api/lessons", selectedSubject],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedSubject && selectedSubject !== "all") {
+        params.append("subject", selectedSubject);
+      }
+      const url = `/api/lessons${params.toString() ? `?${params.toString()}` : ''}`;
+      
+      // Get auth token from Firebase
+      const currentUser = (await import("@/lib/firebase")).auth.currentUser;
+      const headers: Record<string, string> = {};
+      if (currentUser) {
+        const token = await currentUser.getIdToken();
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(url, {
+        credentials: "include",
+        headers,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch lessons");
+      }
+      return response.json();
+    },
   });
 
   // Fetch detailed lesson data when preview is opened
@@ -251,12 +276,23 @@ export default function Lessons() {
           <Card>
             <CardContent className="py-16 text-center">
               <span className="material-icons text-muted-foreground text-6xl mb-4">
-                search_off
+                {error ? "error_outline" : "search_off"}
               </span>
-              <p className="text-lg font-medium text-foreground mb-2">No lessons found</p>
-              <p className="text-muted-foreground">
-                Try selecting a different subject or check back later for new content
+              <p className="text-lg font-medium text-foreground mb-2">
+                {error ? "Error loading lessons" : "No lessons found"}
               </p>
+              <p className="text-muted-foreground">
+                {error 
+                  ? "There was a problem loading the lessons. Please try refreshing the page." 
+                  : "Try selecting a different subject or check back later for new content"
+                }
+              </p>
+              {error && (
+                <Button onClick={() => window.location.reload()} className="mt-4">
+                  <span className="material-icons mr-2">refresh</span>
+                  Refresh Page
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
