@@ -33,6 +33,7 @@ export default function MentorSessions() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
 
   const { data: sessions, isLoading } = useQuery<Session[]>({
     queryKey: ["/api/mentor/sessions"],
@@ -61,8 +62,8 @@ export default function MentorSessions() {
   });
 
   const scheduleSessionMutation = useMutation({
-    mutationFn: async ({ id, scheduledAt }: { id: string; scheduledAt: string }) => {
-      return await apiRequest("POST", `/api/mentor/sessions/${id}/schedule`, { scheduledAt });
+    mutationFn: async ({ id, scheduledAt, meetingLink }: { id: string; scheduledAt: string; meetingLink?: string }) => {
+      return await apiRequest("POST", `/api/mentor/sessions/${id}/schedule`, { scheduledAt, meetingLink });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/mentor/sessions"] });
@@ -71,9 +72,10 @@ export default function MentorSessions() {
       setSelectedSession(null);
       setScheduleDate("");
       setScheduleTime("");
+      setMeetingLink("");
       toast({
         title: "Session scheduled",
-        description: "The session has been scheduled with an automatically generated Google Meet link. The student will be notified.",
+        description: "The session has been scheduled. The student will be notified.",
       });
     },
     onError: () => {
@@ -89,7 +91,7 @@ export default function MentorSessions() {
     if (!selectedSession || !scheduleDate || !scheduleTime) {
       toast({
         title: "Missing information",
-        description: "Please provide both date and time for the session.",
+        description: "Please provide date and time for the session.",
         variant: "destructive",
       });
       return;
@@ -99,6 +101,7 @@ export default function MentorSessions() {
     scheduleSessionMutation.mutate({
       id: selectedSession.id,
       scheduledAt,
+      meetingLink: meetingLink.trim() || undefined,
     });
   };
 
@@ -401,7 +404,7 @@ export default function MentorSessions() {
           <DialogHeader>
             <DialogTitle>Schedule Session</DialogTitle>
             <DialogDescription>
-              Set a date and time for the session with {selectedSession?.studentName}. A Google Meet link will be automatically generated.
+              Set a date, time, and meeting link for the session with {selectedSession?.studentName}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -424,13 +427,26 @@ export default function MentorSessions() {
                 onChange={(e) => setScheduleTime(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="meetingLink">Meeting Link (Optional)</Label>
+              <Input
+                id="meetingLink"
+                type="url"
+                placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                value={meetingLink}
+                onChange={(e) => setMeetingLink(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty or provide your own Google Meet link
+              </p>
+            </div>
             <div className="rounded-lg border border-border bg-muted/50 p-4">
               <div className="flex items-start gap-3">
                 <span className="material-icons text-primary mt-0.5">info</span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Automatic Meeting Link</p>
+                  <p className="text-sm font-medium text-foreground">Create Meeting Link</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    A Google Meet link will be automatically created when you schedule this session. Both you and the student will receive the link via email.
+                    Visit <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">meet.google.com/new</a> to create a new meeting and paste the link above.
                   </p>
                 </div>
               </div>

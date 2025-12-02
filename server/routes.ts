@@ -2002,7 +2002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mentor/sessions/:id/schedule", verifyFirebaseToken, requireRole("mentor"), async (req, res) => {
     try {
       const sessionId = req.params.id;
-      const { scheduledAt, duration = 60 } = req.body;
+      const { scheduledAt, duration = 60, meetingLink: providedMeetingLink } = req.body;
       const mentor = req.user as any;
 
       if (!scheduledAt) {
@@ -2023,60 +2023,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Student not found" });
       }
 
-      // Create calendar event with automatic Meet link
+      // Use provided meeting link or try to create one via Google Calendar
       let calendarEventId = null;
-      let meetingLink = null;
+      let meetingLink = providedMeetingLink || null;
 
-      try {
-        if (mentor.googleCalendarToken) {
-          // Google Calendar API will automatically create a Meet link
-          const eventId = await calendar.createMentorshipEvent(
-            {
-              studentName: `${student.firstName} ${student.lastName}`,
-              studentEmail: student.email || '',
-              mentorName: `${mentor.firstName} ${mentor.lastName}`,
-              mentorEmail: mentor.email || '',
-              subject: session.subject,
-              description: session.requestMessage || 'Mentorship session',
-              startTime: new Date(scheduledAt),
-              duration,
-            },
-            mentor.googleCalendarToken
-          );
-          calendarEventId = eventId;
-          
-          // Fetch the created event to get the Meet link
-          const auth = calendar.setUserCredentials(mentor.googleCalendarToken);
-          const calendarService = google.calendar({ version: 'v3', auth });
-          const event = await calendarService.events.get({
-            calendarId: 'primary',
-            eventId,
-          });
-          
-          // Extract Meet link from conference data
-          meetingLink = event.data.hangoutLink || event.data.conferenceData?.entryPoints?.[0]?.uri;
-        }
-      } catch (calendarError) {
-        console.error("Failed to create calendar event:", calendarError);
-        // Generate a properly formatted Google Meet code as fallback
-        // Format: xxx-yyyy-zzz (3 chars - 4 chars - 3 chars)
-        const chars = 'abcdefghijklmnopqrstuvwxyz';
-        const part1 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const part2 = Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const part3 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        meetingLink = `https://meet.google.com/${part1}-${part2}-${part3}`;
-        console.log("Generated fallback meeting link:", meetingLink);
-      }
-
-      // If no Google Calendar integration, generate a properly formatted Meet-style link
+      // Only try Google Calendar if no meeting link was provided
       if (!meetingLink) {
-        // Format: xxx-yyyy-zzz (3 chars - 4 chars - 3 chars)
-        const chars = 'abcdefghijklmnopqrstuvwxyz';
-        const part1 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const part2 = Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const part3 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        meetingLink = `https://meet.google.com/${part1}-${part2}-${part3}`;
-        console.log("Generated meeting link:", meetingLink);
+        try {
+          if (mentor.googleCalendarToken) {
+            // Google Calendar API will automatically create a Meet link
+            const eventId = await calendar.createMentorshipEvent(
+              {
+                studentName: `${student.firstName} ${student.lastName}`,
+                studentEmail: student.email || '',
+                mentorName: `${mentor.firstName} ${mentor.lastName}`,
+                mentorEmail: mentor.email || '',
+                subject: session.subject,
+                description: session.requestMessage || 'Mentorship session',
+                startTime: new Date(scheduledAt),
+                duration,
+              },
+              mentor.googleCalendarToken
+            );
+            calendarEventId = eventId;
+            
+            // Fetch the created event to get the Meet link
+            const auth = calendar.setUserCredentials(mentor.googleCalendarToken);
+            const calendarService = google.calendar({ version: 'v3', auth });
+            const event = await calendarService.events.get({
+              calendarId: 'primary',
+              eventId,
+            });
+            
+            // Extract Meet link from conference data
+            meetingLink = event.data.hangoutLink || event.data.conferenceData?.entryPoints?.[0]?.uri;
+          }
+        } catch (calendarError) {
+          console.error("Failed to create calendar event:", calendarError);
+          // Don't generate fake links - just leave it null
+          console.log("No meeting link available - mentor should provide one manually");
+        }
       }
 
       // Update session with schedule and calendar info
@@ -2089,11 +2075,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mentorId: mentor.id,
       });
 
-      // Notify student with Meet link
+      // Notify student with or without Meet link
+      const notificationMessage = meetingLink
+        ? `Your ${session.subject} mentorship session has been scheduled for ${new Date(scheduledAt).toLocaleString()}. Join here: ${meetingLink}`
+        : `Your ${session.subject} mentorship session has been scheduled for ${new Date(scheduledAt).toLocaleString()}. The mentor will provide the meeting link.`;
+      
       await createNotificationWithEmail(
         student.id,
         "mentorship_scheduled",
-        `Your ${session.subject} mentorship session has been scheduled for ${new Date(scheduledAt).toLocaleString()}. Join here: ${meetingLink}`,
+        notificationMessage,
         sessionId
       );
 
