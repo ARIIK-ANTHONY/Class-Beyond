@@ -1886,11 +1886,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status } = req.query;
       const lessons = await storage.getAllLessons({});
       
+      console.log(`📚 Total lessons found: ${lessons.length}`);
+      console.log(`📋 Lessons approval status:`, lessons.map(l => ({ id: l.id, title: l.title, isApproved: l.isApproved })));
+      
       let filteredLessons = lessons;
       if (status === "pending") {
-        filteredLessons = lessons.filter(l => !l.isApproved);
+        filteredLessons = lessons.filter(l => l.isApproved === false);
+        console.log(`⏳ Pending lessons (isApproved === false): ${filteredLessons.length}`);
       } else if (status === "approved") {
-        filteredLessons = lessons.filter(l => l.isApproved);
+        filteredLessons = lessons.filter(l => l.isApproved === true);
+        console.log(`✅ Approved lessons (isApproved === true): ${filteredLessons.length}`);
       }
       
       // Fetch teacher names
