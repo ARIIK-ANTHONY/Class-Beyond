@@ -34,6 +34,13 @@ export default function LessonViewer() {
   // Save lesson to IndexedDB after fetching
   useEffect(() => {
     if (lesson) {
+      console.log("📚 Lesson loaded:", {
+        id: lesson.id,
+        title: lesson.title,
+        hasQuiz: !!lesson.quiz,
+        quizId: lesson.quiz?.id,
+        quizStructure: lesson.quiz ? Object.keys(lesson.quiz) : []
+      });
       saveLesson(lesson).catch(err => console.debug("Failed to cache lesson:", err));
       setIsOfflineLesson(false);
     }
@@ -556,7 +563,7 @@ export default function LessonViewer() {
                 )}
               </Button>
 
-              {lesson.quiz && lesson.quiz.id && (
+              {lesson.quiz?.id && (
                 <Link href={`/quiz/${lesson.quiz.id}`} className="block">
                   <Button size="lg" variant="outline" className="w-full" data-testid="button-take-quiz">
                     <span className="material-icons mr-2">quiz</span>
