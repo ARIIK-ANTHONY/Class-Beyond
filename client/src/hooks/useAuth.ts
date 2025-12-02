@@ -36,11 +36,10 @@ export function useAuth() {
       return response.json();
     },
     enabled: !!currentUser,
-    retry: false,
-    refetchInterval: false,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    staleTime: Infinity, // Never mark as stale
+    retry: 2, // Retry twice for better reliability
+    refetchOnMount: "always", // Always refetch on mount to get latest data
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to ensure fresh fetch after signup
   });
 
   // Sync Firebase user to backend
@@ -61,8 +60,10 @@ export function useAuth() {
       if (!response.ok) throw new Error("Failed to sync user");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    onSuccess: async () => {
+      // Invalidate and immediately refetch to update user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/user"] });
     },
   });
 

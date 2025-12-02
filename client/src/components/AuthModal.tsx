@@ -80,10 +80,11 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         
         onOpenChange(false);
         
-        // Reload to ensure router picks up authenticated state with correct role
+        // Wait longer for database sync to complete, then reload
+        // This ensures the user data is properly saved before redirect
         setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+          window.location.replace(window.location.href);
+        }, 1500);
       }
     } catch (error: any) {
       toast({

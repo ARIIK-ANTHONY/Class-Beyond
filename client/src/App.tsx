@@ -49,9 +49,13 @@ function Router() {
   }
 
   // Debug logging
-  console.log("Router - isAuthenticated:", isAuthenticated);
-  console.log("Router - user:", user);
-  console.log("Router - user role:", user?.role);
+  console.log("🔍 Router State:", {
+    isAuthenticated,
+    isLoading,
+    hasUser: !!user,
+    userRole: user?.role,
+    userEmail: user?.email
+  });
 
   return (
     <Switch>
