@@ -902,7 +902,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: fromError(validationResult.error).toString() });
       }
 
-      const lesson = await storage.createLesson(validationResult.data);
+      // Explicitly set isApproved to false for new lessons
+      const lessonData = {
+        ...validationResult.data,
+        isApproved: false,
+      };
+
+      const lesson = await storage.createLesson(lessonData);
       console.log("✅ Lesson created:", lesson.id);
       // Create audit log
       const user = req.user as any;
