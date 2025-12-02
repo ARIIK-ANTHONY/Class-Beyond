@@ -41,6 +41,24 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         // Wait for Firebase auth state to update
         await new Promise(resolve => setTimeout(resolve, 1000));
         
+        // Try to sync user - if user doesn't exist in database, this will fail
+        // and we'll show an appropriate error
+        try {
+          await syncUser({});
+        } catch (syncError: any) {
+          // If user doesn't exist in database, ask them to sign up
+          if (syncError.message?.includes("not found")) {
+            toast({
+              title: "Account not found",
+              description: "Please sign up to create your account.",
+              variant: "destructive",
+            });
+            setIsLogin(false); // Switch to signup form
+            return;
+          }
+          // For other errors, continue anyway (user might already be synced)
+        }
+        
         toast({
           title: "Welcome back!",
           description: "You've successfully logged in.",

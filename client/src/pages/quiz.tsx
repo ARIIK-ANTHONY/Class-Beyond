@@ -380,97 +380,209 @@ export default function Quiz() {
     );
   }
 
+  const answerLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <OfflineIndicator />
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <div className="flex items-center justify-between mb-4">
-            <CardTitle>{quiz.title}</CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setLocation("/lessons")}
-              data-testid="button-close-quiz"
-            >
-              <span className="material-icons">close</span>
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                Question {currentQuestion + 1} of {questions.length}
-              </span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium mb-4" data-testid="question-text">
-              {currentQ.question}
-            </h3>
-
-            <RadioGroup
-              value={answers[currentQuestion] || ""}
-              onValueChange={(value) =>
-                setAnswers((prev) => ({ ...prev, [currentQuestion]: value }))
-              }
-            >
-              <div className="space-y-3">
-                {currentQ.options.map((option: string, idx: number) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-colors hover-elevate ${
-                      answers[currentQuestion] === option
-                        ? "border-primary bg-primary/5"
-                        : "border-border"
-                    }`}
-                  >
-                    <RadioGroupItem value={option} id={`option-${idx}`} />
-                    <Label
-                      htmlFor={`option-${idx}`}
-                      className="flex-1 cursor-pointer"
-                      data-testid={`option-${idx}`}
-                    >
-                      {option}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-              data-testid="button-previous"
-            >
-              <span className="material-icons mr-2">arrow_back</span>
-              Previous
-            </Button>
-            <div className="flex-1" />
-            {currentQuestion === questions.length - 1 ? (
+      
+      {/* Top Header Bar */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <Button
-                onClick={handleSubmit}
-                disabled={Object.keys(answers).length !== questions.length}
-                data-testid="button-submit-quiz"
+                variant="ghost"
+                size="icon"
+                onClick={() => setLocation("/lessons")}
+                data-testid="button-close-quiz"
               >
-                Submit Quiz
-                <span className="material-icons ml-2">check</span>
+                <span className="material-icons">close</span>
               </Button>
-            ) : (
-              <Button onClick={handleNext} data-testid="button-next">
-                Next
-                <span className="material-icons ml-2">arrow_forward</span>
-              </Button>
-            )}
+              <div>
+                <h2 className="font-semibold text-lg">{quiz.title}</h2>
+                <p className="text-sm text-muted-foreground">
+                  Question {currentQuestion + 1} of {questions.length}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="material-icons text-base">schedule</span>
+                <span>{Math.round(progress)}% Complete</span>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <Progress value={progress} className="h-1.5 mt-3" />
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Question Navigation Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <span className="material-icons text-base">grid_view</span>
+                  Questions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-5 lg:grid-cols-4 gap-2">
+                  {questions.map((_, idx) => (
+                    <Button
+                      key={idx}
+                      variant={currentQuestion === idx ? "default" : "outline"}
+                      size="sm"
+                      className={`h-10 w-10 p-0 ${answers[idx] ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+                      onClick={() => setCurrentQuestion(idx)}
+                    >
+                      {idx + 1}
+                    </Button>
+                  ))}
+                </div>
+                <Separator className="my-4" />
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-primary" />
+                    <span>Current</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full border-2 border-green-500" />
+                    <span>Answered</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full border-2 border-muted" />
+                    <span>Unanswered</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Question Area */}
+          <div className="lg:col-span-3">
+            <Card className="shadow-lg">
+              <CardHeader className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Badge variant="secondary" className="mt-1">
+                    Question {currentQuestion + 1}
+                  </Badge>
+                  <div className="flex-1">
+                    <h3 className="text-xl md:text-2xl font-semibold leading-relaxed" data-testid="question-text">
+                      {currentQ.question}
+                    </h3>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+
+                  <RadioGroup
+                    value={answers[currentQuestion] || ""}
+                    onValueChange={(value) =>
+                      setAnswers((prev) => ({ ...prev, [currentQuestion]: value }))
+                    }
+                  >
+                    <div className="space-y-3">
+                      {currentQ.options.map((option: string, idx: number) => (
+                        <div
+                          key={idx}
+                          className={`group relative flex items-start space-x-4 p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${
+                            answers[currentQuestion] === option
+                              ? "border-primary bg-primary/10 shadow-md scale-[1.02]"
+                              : "border-border hover:border-primary/50 hover:bg-accent/50 hover:scale-[1.01]"
+                          }`}
+                          onClick={() => setAnswers((prev) => ({ ...prev, [currentQuestion]: option }))}
+                        >
+                          <div className={`flex items-center justify-center min-w-[40px] h-10 rounded-lg font-semibold transition-colors ${
+                            answers[currentQuestion] === option
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground group-hover:bg-primary/20"
+                          }`}>
+                            {answerLabels[idx]}
+                          </div>
+                          <div className="flex-1 flex items-center">
+                            <RadioGroupItem 
+                              value={option} 
+                              id={`option-${idx}`} 
+                              className="sr-only"
+                            />
+                            <Label
+                              htmlFor={`option-${idx}`}
+                              className="flex-1 cursor-pointer text-base leading-relaxed"
+                              data-testid={`option-${idx}`}
+                            >
+                              {option}
+                            </Label>
+                          </div>
+                          {answers[currentQuestion] === option && (
+                            <span className="material-icons text-primary">check_circle</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <Separator />
+                
+                {/* Navigation Buttons */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handlePrevious}
+                    disabled={currentQuestion === 0}
+                    data-testid="button-previous"
+                    className="flex-1"
+                  >
+                    <span className="material-icons mr-2">arrow_back</span>
+                    Previous
+                  </Button>
+                  {currentQuestion === questions.length - 1 ? (
+                    <Button
+                      size="lg"
+                      onClick={handleSubmit}
+                      disabled={Object.keys(answers).length !== questions.length}
+                      data-testid="button-submit-quiz"
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <span className="material-icons mr-2">check</span>
+                      Submit Quiz
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="lg"
+                      onClick={handleNext} 
+                      data-testid="button-next"
+                      className="flex-1"
+                    >
+                      Next
+                      <span className="material-icons ml-2">arrow_forward</span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Answer Summary Warning */}
+                {currentQuestion === questions.length - 1 && Object.keys(answers).length !== questions.length && (
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <span className="material-icons text-amber-600">warning</span>
+                    <div className="flex-1 text-sm">
+                      <p className="font-medium text-amber-900 dark:text-amber-100">Incomplete Quiz</p>
+                      <p className="text-amber-700 dark:text-amber-300">
+                        You have {questions.length - Object.keys(answers).length} unanswered question(s). 
+                        Please answer all questions before submitting.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
