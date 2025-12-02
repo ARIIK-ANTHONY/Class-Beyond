@@ -29,7 +29,7 @@ export default function MentorHome() {
     subject: string;
     scheduledAt: string;
     description?: string;
-    meetLink?: string;
+    meetingLink?: string;
   }>>({
     queryKey: ["/api/mentor/upcoming-sessions"],
   });
@@ -338,12 +338,15 @@ export default function MentorHome() {
                                     </p>
                                   )}
                                 </div>
-                                {session.meetLink ? (
+                                {session.meetingLink ? (
                                   <Button 
                                     variant="default" 
                                     size="sm" 
                                     data-testid={`button-session-${session.id}`}
-                                    onClick={() => window.open(session.meetLink, '_blank')}
+                                    onClick={() => {
+                                      console.log('Mentor joining from home:', session.meetingLink);
+                                      window.open(session.meetingLink!, '_blank', 'noopener,noreferrer');
+                                    }}
                                   >
                                     <span className="material-icons mr-1 text-lg">video_call</span>
                                     Join Meet
