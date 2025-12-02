@@ -24,7 +24,7 @@ interface Session {
   scheduledAt: string | null;
   createdAt: string;
   requestMessage: string | null;
-  meetLink: string | null;
+  meetingLink: string | null;
 }
 
 export default function MentorSessions() {
@@ -276,18 +276,21 @@ export default function MentorSessions() {
                                 )}
                               </div>
                               <div className="flex flex-col gap-2">
-                                {session.meetLink ? (
+                                {session.meetingLink ? (
                                   <Button
                                     size="sm"
-                                    onClick={() => window.open(session.meetLink!, '_blank')}
+                                    onClick={() => {
+                                      console.log('Mentor joining meeting:', session.meetingLink);
+                                      window.open(session.meetingLink!, '_blank', 'noopener,noreferrer');
+                                    }}
                                   >
                                     <span className="material-icons mr-1 text-lg">video_call</span>
                                     Join Meet
                                   </Button>
                                 ) : (
-                                  <Button size="sm" variant="outline">
-                                    <span className="material-icons mr-1 text-lg">info</span>
-                                    Details
+                                  <Button size="sm" variant="outline" disabled>
+                                    <span className="material-icons mr-1 text-lg">pending</span>
+                                    No Link
                                   </Button>
                                 )}
                                 <Button

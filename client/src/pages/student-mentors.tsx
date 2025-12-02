@@ -155,7 +155,10 @@ export default function StudentMentors() {
                         {session.meetingLink && (
                           <Button
                             size="sm"
-                            onClick={() => window.open(session.meetingLink!, '_blank')}
+                            onClick={() => {
+                              console.log('Student joining meeting:', session.meetingLink);
+                              window.open(session.meetingLink!, '_blank', 'noopener,noreferrer');
+                            }}
                           >
                             <span className="material-icons mr-1 text-lg">video_call</span>
                             Join Meet

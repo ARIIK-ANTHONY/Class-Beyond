@@ -2058,15 +2058,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (calendarError) {
         console.error("Failed to create calendar event:", calendarError);
-        // Generate a random Google Meet link as fallback
-        const meetCode = Math.random().toString(36).substring(2, 15);
-        meetingLink = `https://meet.google.com/${meetCode}`;
+        // Generate a properly formatted Google Meet code as fallback
+        // Format: xxx-yyyy-zzz (3 chars - 4 chars - 3 chars)
+        const chars = 'abcdefghijklmnopqrstuvwxyz';
+        const part1 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const part2 = Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const part3 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        meetingLink = `https://meet.google.com/${part1}-${part2}-${part3}`;
+        console.log("Generated fallback meeting link:", meetingLink);
       }
 
-      // If no Google Calendar integration, generate a random Meet-style link
+      // If no Google Calendar integration, generate a properly formatted Meet-style link
       if (!meetingLink) {
-        const meetCode = `${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
-        meetingLink = `https://meet.google.com/${meetCode}`;
+        // Format: xxx-yyyy-zzz (3 chars - 4 chars - 3 chars)
+        const chars = 'abcdefghijklmnopqrstuvwxyz';
+        const part1 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const part2 = Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const part3 = Array.from({length: 3}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        meetingLink = `https://meet.google.com/${part1}-${part2}-${part3}`;
+        console.log("Generated meeting link:", meetingLink);
       }
 
       // Update session with schedule and calendar info
