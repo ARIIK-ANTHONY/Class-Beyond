@@ -484,10 +484,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch badges" });
     }
   });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch progress" });
-    }
-  });
 
   // Update lesson progress
   app.post("/api/student/progress", verifyFirebaseToken, requireRole("student"), async (req, res) => {
