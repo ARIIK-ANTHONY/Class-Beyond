@@ -9,6 +9,7 @@ import { sendNotificationEmail } from "./email";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool } from "@neondatabase/serverless";
 import { eq, and, inArray, desc, asc, sql } from "drizzle-orm";
+import { checkAndAwardBadgesForQuiz, initializeBadges, getStudentBadges } from "./badgeService";
 
 // Initialize database connection
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -146,6 +147,10 @@ async function createNotificationWithEmail(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize badges on startup
+  await initializeBadges();
+  console.log("✅ Badge system initialized");
+
   // ============= Authentication Routes =============
   
   // Sync Firebase user to database
@@ -385,6 +390,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get a single quiz by ID
+  app.get("/api/quizzes/:id", verifyFirebaseToken, requireAuth, async (req, res) => {
+    try {
+      const quizId = req.params.id;
+      const quiz = await storage.getQuiz(quizId);
+      
+      if (!quiz) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+      
+      res.json(quiz);
+    } catch (error) {
+      console.error("Error fetching quiz:", error);
+      res.status(500).json({ error: "Failed to fetch quiz" });
+    }
+  });
+
   // Submit quiz
   app.post("/api/quizzes/:id/submit", verifyFirebaseToken, requireRole("student"), async (req, res) => {
     try {
@@ -403,15 +425,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const submission = await storage.createQuizSubmission(validationResult.data);
       
+      // Check and award badges
+      const completionTime = req.body.completionTime || 300; // Default 5 minutes if not provided
+      const newlyEarnedBadges = await checkAndAwardBadgesForQuiz(
+        user.id,
+        quizId,
+        submission.score,
+        submission.totalQuestions,
+        completionTime
+      );
+
+      // Send badge notifications
+      for (const badge of newlyEarnedBadges) {
+        await createNotificationWithEmail(
+          user.id,
+          "badge_earned",
+          `🎉 You earned the "${badge.name}" badge!`,
+          badge.id
+        );
+      }
+      
       // Create audit log
       await storage.createAuditLog({
         userId: user.id,
         action: "quiz_submit",
-        metadata: { quizId, score: submission.score },
+        metadata: { quizId, score: submission.score, badgesEarned: newlyEarnedBadges.length },
       });
 
-      res.json(submission);
+      res.json({ 
+        ...submission, 
+        newlyEarnedBadges 
+      });
     } catch (error) {
+      console.error("Error submitting quiz:", error);
       res.status(500).json({ error: "Failed to submit quiz" });
     }
   });
@@ -422,6 +468,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const progress = await storage.getProgressByUser(user.id);
       res.json(progress);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch progress" });
+    }
+  });
+
+  // Get student's badges
+  app.get("/api/student/badges", verifyFirebaseToken, requireRole("student"), async (req, res) => {
+    try {
+      const user = req.user as any;
+      const badges = await getStudentBadges(user.id);
+      res.json(badges);
+    } catch (error) {
+      console.error("Error fetching badges:", error);
+      res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch progress" });
     }

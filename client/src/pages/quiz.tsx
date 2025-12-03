@@ -13,6 +13,7 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Trophy } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Quiz() {
@@ -22,32 +23,37 @@ export default function Quiz() {
   const { toast } = useToast();
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
   const [detailedResults, setDetailedResults] = useState<any[]>([]);
-  const [badgesEarned, setBadgesEarned] = useState<string[]>([]);
+  const [badgesEarned, setBadgesEarned] = useState<any[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [quizStartTime] = useState(Date.now());
 
   const { data: quiz, isLoading, error } = useQuery({
-    queryKey: ["/api/quizzes", quizId],
+    queryKey: [`/api/quizzes/${quizId}`],
     enabled: !!quizId,
   });
 
-  // Debug logging
-  console.log("🎯 Quiz page:", {
-    quizId,
-    hasQuiz: !!quiz,
-    isLoading,
-    error,
-    quiz: quiz
-  });
-
   const submitQuizMutation = useMutation({
-    mutationFn: async (submission: { quizId: string; answers: any[]; score: number; totalQuestions: number }) => {
-      await apiRequest("POST", "/api/student/submit-quiz", submission);
+    mutationFn: async (submission: { quizId: string; answers: any[]; score: number; totalQuestions: number; completionTime: number }) => {
+      const response = await apiRequest("POST", "/api/student/submit-quiz", submission);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Store newly earned badges
+      if (data.newlyEarnedBadges && data.newlyEarnedBadges.length > 0) {
+        setBadgesEarned(data.newlyEarnedBadges);
+        // Show toast for each badge
+        data.newlyEarnedBadges.forEach((badge: any) => {
+          toast({
+            title: "🎉 Badge Earned!",
+            description: `You earned the "${badge.name}" badge!`,
+            duration: 5000,
+          });
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/student/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/student/badges"] });
     },
@@ -122,22 +128,10 @@ export default function Quiz() {
     const calculatedScore = Math.round((correctAnswers / questions.length) * 100);
     setScore(calculatedScore);
     setDetailedResults(answersArray);
-    
-    // Determine badges earned
-    const earnedBadges: string[] = [];
-    if (calculatedScore === 100) {
-      earnedBadges.push('Perfect Score');
-    }
-    if (calculatedScore >= 90) {
-      earnedBadges.push('High Achiever');
-    }
-    if (calculatedScore >= 80) {
-      earnedBadges.push('Quiz Expert');
-    }
-    setBadgesEarned(earnedBadges);
-    
     setShowResults(true);
     
+    // Calculate completion time in seconds
+    const completionTime = Math.floor((Date.now() - quizStartTime) / 1000);
     // Trigger celebration animation for good scores
     if (calculatedScore >= 80) {
       setShowCelebration(true);
@@ -149,6 +143,7 @@ export default function Quiz() {
       answers: answersArray,
       score: calculatedScore,
       totalQuestions: questions.length,
+      completionTime,
     });
   };
 
@@ -227,6 +222,45 @@ export default function Quiz() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Badges Earned */}
+          {badgesEarned.length > 0 && (
+            <Card className="mb-8 border-2 border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                  <Trophy className="w-6 h-6" />
+                  Badges Earned!
+                </CardTitle>
+                <CardDescription>
+                  Congratulations! You've earned the following badges:
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {badgesEarned.map((badge, idx) => (
+                    <Card key={idx} className="border-2 border-yellow-300">
+                      <CardContent className="pt-6 text-center space-y-2">
+                        <div className="text-4xl">{badge.icon}</div>
+                        <p className="font-bold">{badge.name}</p>
+                        <p className="text-sm text-muted-foreground">{badge.description}</p>
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          +{badge.points} points
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <div className="mt-4 text-center">
+                  <Link href="/badges">
+                    <Button variant="outline" className="gap-2">
+                      <Trophy className="w-4 h-4" />
+                      View All Badges
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Performance Analysis */}
           <Card className="mb-8">
@@ -325,14 +359,14 @@ export default function Quiz() {
                     <div className="text-sm">
                       <span className="font-medium text-muted-foreground">Your Answer: </span>
                       <span className={result.isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
-                        {result.userAnswer || 'Not answered'}
+                        {result.userAnswer !== undefined ? questions[idx].options[result.userAnswer] : 'Not answered'}
                       </span>
                     </div>
                     {!result.isCorrect && (
                       <div className="text-sm">
                         <span className="font-medium text-muted-foreground">Correct Answer: </span>
                         <span className="text-green-700 dark:text-green-300">
-                          {result.correctAnswer}
+                          {questions[idx].options[result.correctAnswer]}
                         </span>
                       </div>
                     )}
@@ -489,9 +523,9 @@ export default function Quiz() {
                 <div>
 
                   <RadioGroup
-                    value={answers[currentQuestion] || ""}
+                    value={answers[currentQuestion]?.toString() || ""}
                     onValueChange={(value) =>
-                      setAnswers((prev) => ({ ...prev, [currentQuestion]: value }))
+                      setAnswers((prev) => ({ ...prev, [currentQuestion]: parseInt(value) }))
                     }
                   >
                     <div className="space-y-3">
@@ -499,14 +533,14 @@ export default function Quiz() {
                         <div
                           key={idx}
                           className={`group relative flex items-start space-x-4 p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${
-                            answers[currentQuestion] === option
+                            answers[currentQuestion] === idx
                               ? "border-primary bg-primary/10 shadow-md scale-[1.02]"
                               : "border-border hover:border-primary/50 hover:bg-accent/50 hover:scale-[1.01]"
                           }`}
-                          onClick={() => setAnswers((prev) => ({ ...prev, [currentQuestion]: option }))}
+                          onClick={() => setAnswers((prev) => ({ ...prev, [currentQuestion]: idx }))}
                         >
                           <div className={`flex items-center justify-center min-w-[40px] h-10 rounded-lg font-semibold transition-colors ${
-                            answers[currentQuestion] === option
+                            answers[currentQuestion] === idx
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-muted-foreground group-hover:bg-primary/20"
                           }`}>
@@ -514,7 +548,7 @@ export default function Quiz() {
                           </div>
                           <div className="flex-1 flex items-center">
                             <RadioGroupItem 
-                              value={option} 
+                              value={idx.toString()} 
                               id={`option-${idx}`} 
                               className="sr-only"
                             />
@@ -526,7 +560,7 @@ export default function Quiz() {
                               {option}
                             </Label>
                           </div>
-                          {answers[currentQuestion] === option && (
+                          {answers[currentQuestion] === idx && (
                             <span className="material-icons text-primary">check_circle</span>
                           )}
                         </div>

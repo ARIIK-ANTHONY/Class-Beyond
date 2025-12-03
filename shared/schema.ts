@@ -143,26 +143,55 @@ export type QuizSubmission = typeof quizSubmissions.$inferSelect;
 
 // Badge types enum
 export const badgeTypeEnum = pgEnum("badge_type", [
-  "first_lesson",
-  "quiz_master",
-  "perfect_score",
-  "week_streak",
-  "subject_champion",
-  "curious_learner",
+  "achievement",
+  "streak",
+  "participation",
+  "mastery",
+  "special",
 ]);
 
-// Badges earned by students
+export const badgeRarityEnum = pgEnum("badge_rarity", [
+  "common",
+  "rare",
+  "epic",
+  "legendary",
+]);
+
+// Badges definition table - all available badges
+export const badges = pgTable("badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description").notNull(),
+  type: badgeTypeEnum("type").notNull(),
+  rarity: badgeRarityEnum("rarity").notNull().default("common"),
+  icon: varchar("icon", { length: 100 }).notNull(), // Emoji or icon identifier
+  requirement: jsonb("requirement").notNull(), // { type: string, value: number, subject?: string }
+  points: integer("points").default(10), // Points awarded when earned
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+// Student badges - junction table with progress tracking
 export const studentBadges = pgTable("student_badges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   studentId: varchar("student_id").notNull().references(() => users.id),
-  badgeType: badgeTypeEnum("badge_type").notNull(),
-  earnedAt: timestamp("earned_at").defaultNow(),
-  metadata: jsonb("metadata"), // Additional info about how badge was earned
+  badgeId: varchar("badge_id").notNull().references(() => badges.id),
+  progress: integer("progress").default(0), // Current progress towards requirement
+  earnedAt: timestamp("earned_at"), // Null if not yet earned
+  notificationSent: boolean("notification_sent").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertStudentBadgeSchema = createInsertSchema(studentBadges).omit({
   id: true,
-  earnedAt: true,
+  createdAt: true,
 });
 
 export type InsertStudentBadge = z.infer<typeof insertStudentBadgeSchema>;

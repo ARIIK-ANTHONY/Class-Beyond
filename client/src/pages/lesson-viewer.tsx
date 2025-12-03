@@ -34,14 +34,6 @@ export default function LessonViewer() {
   // Save lesson to IndexedDB after fetching
   useEffect(() => {
     if (lesson) {
-      console.log("📚 Lesson loaded:", {
-        id: lesson.id,
-        title: lesson.title,
-        hasQuiz: !!lesson.quiz,
-        quizId: lesson.quiz?.id,
-        quizStructure: lesson.quiz ? Object.keys(lesson.quiz) : [],
-        fullQuiz: lesson.quiz // Log entire quiz object
-      });
       saveLesson(lesson).catch(err => console.debug("Failed to cache lesson:", err));
       setIsOfflineLesson(false);
     }
